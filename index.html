@@ -18,30 +18,137 @@
         let db, auth, userId;
         let clientsData = [];
         const STAGES = ["Prospección", "Estudio de Viabilidad", "Propuesta Enviada", "Cerrado (Ganado)", "Cerrado (Perdido)"];
+        const API_KEY = ""; // La clave API para Gemini se proporciona en tiempo de ejecución.
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + API_KEY;
+        const LLM_MODEL = "gemini-2.5-flash-preview-05-20";
 
-        // --- Datos Iniciales de la Matriz de Prospección ---
+        // --- Datos Iniciales de la Matriz de Prospección (Mismos que el ejemplo anterior) ---
         const initialClients = [
             // Prioridad 1
-            { id: 'c1', name: 'Alberto López', company: 'Cooperativa Ganadera', role: 'Director de Producción', phone: '921165700', email: 'alopez@coopbrizo.es', address: 'Cuéllar, Segovia', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Alto consumo gasóleo. Mencionar bajo mantenimiento de cenizas.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 150000, nextStep: 'Enviar panfleto y calculadora ROI.' },
-            { id: 'c2', name: 'Elena Sanz', company: 'Bodega Premium', role: 'Resp. Infraestructuras', phone: '983881200', email: 'esanz@bodega-robles.es', address: 'Peñafiel, Valladolid', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Interés en sostenibilidad certificada. Presupuesto alto.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 120000, nextStep: 'Llamada de apertura, enfocar en imagen de marca.' },
-            { id: 'c3', name: 'Javier Morales', company: 'Industria de Procesado', role: 'Gerente de Compras', phone: '983204150', email: 'jmorales@indutermica.es', address: 'Valladolid', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Alto volumen de secado, necesita ROI rápido.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 200000, nextStep: 'Preparar análisis de ahorro detallado.' },
-            { id: 'c4', name: 'Ricardo Pérez', company: 'Invernaderos Comerciales', role: 'Propietario', phone: '920305020', email: 'rperez@hortusavila.es', address: 'Arévalo, Ávila', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Crítico el suministro en invierno. Vender logística local.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 90000, nextStep: 'Definir precio fijo para el Q4.' },
-            { id: 'c5', name: 'Marta Gil', company: 'Centro Logístico Frío', role: 'Directora de Operaciones', phone: '916738400', email: 'mgil@logi-centrale.es', address: 'Coslada, Madrid', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Cumplimiento normativo de emisiones en Madrid.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 100000, nextStep: 'Investigar licencias ambientales.' },
+            { id: 'c1', name: 'Alberto López', company: 'Cooperativa Ganadera', role: 'Director de Producción', phone: '921165700', email: 'alopez@coopbrizo.es', address: 'Cuéllar, Segovia', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Alto consumo gasóleo. Mencionar bajo mantenimiento de cenizas. Enviar info. La clave es el ahorro a largo plazo y la logística asegurada. El gasóleo está subiendo y es un punto de dolor.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 150000, nextStep: 'Enviar panfleto y calculadora ROI.' },
+            { id: 'c2', name: 'Elena Sanz', company: 'Bodega Premium', role: 'Resp. Infraestructuras', phone: '983881200', email: 'esanz@bodega-robles.es', address: 'Peñafiel, Valladolid', segment: 'Gran Volumen', stage: 'Estudio de Viabilidad', notes: 'Interés en sostenibilidad certificada. Presupuesto alto. Le preocupa el polvo y el olor. Hay que enfatizar la certificación ENplus A1 y la baja emisión. Solicitó un estudio de impacto ambiental.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 120000, nextStep: 'Presentar resultados del estudio ambiental.' },
+            { id: 'c3', name: 'Javier Morales', company: 'Industria de Procesado', role: 'Gerente de Compras', phone: '983204150', email: 'jmorales@indutermica.es', address: 'Valladolid', segment: 'Gran Volumen', stage: 'Propuesta Enviada', notes: 'Propuesta enviada el 15/09. Responde a precio, pero tiene dudas sobre la disponibilidad en Q4. Insistir en la capacidad de producción de 80.000t y stock. Necesita un contrato flexible.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 200000, nextStep: 'Llamada de cierre para aclarar la garantía de suministro.' },
+            { id: 'c4', name: 'Ricardo Pérez', company: 'Invernaderos Comerciales', role: 'Propietario', phone: '920305020', email: 'rperez@hortusavila.es', address: 'Arévalo, Ávila', segment: 'Gran Volumen', stage: 'Prospección', notes: 'Crítico el suministro en invierno. Vender logística local. Tiene contrato con proveedor A, que termina en noviembre. Necesita una oferta muy competitiva y volumen asegurado.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 90000, nextStep: 'Definir precio fijo para el Q4.' },
+            { id: 'c5', name: 'Marta Gil', company: 'Centro Logístico Frío', role: 'Directora de Operaciones', phone: '916738400', email: 'mgil@logi-centrale.es', address: 'Coslada, Madrid', segment: 'Gran Volumen', stage: 'Estudio de Viabilidad', notes: 'Cumplimiento normativo de emisiones en Madrid es la prioridad número uno. Quiere ver comparativa legal con gasóleo C. Muy sensible a multas y fiscalización. Mandar documentación oficial.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 100000, nextStep: 'Enviar comparativa legal y caso de éxito en Madrid.' },
             // Prioridad 2 (5 más)
-            { id: 'c6', name: 'Daniel Cruz', company: 'ESE Regional', role: 'Jefe de Proyectos', phone: '917895500', email: 'dcruz@energy-soluciones.es', address: 'Madrid Capital', segment: 'Alianzas', stage: 'Prospección', notes: 'Busca socio estable para acuerdos marco.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 500000, nextStep: 'Presentar propuesta de Alianza B2B.' },
-            { id: 'c7', name: 'Ana Ruiz', company: 'Distribuidor Local', role: 'Resp. Compras', phone: '947259330', email: 'aruiz@distribuidorcl.es', address: 'Burgos', segment: 'Alianzas', stage: 'Prospección', notes: 'Necesita ENplus A1 certificado y volumen de entrega semanal.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 80000, nextStep: 'Muestra de pellet a almacén.' },
+            { id: 'c6', name: 'Daniel Cruz', company: 'ESE Regional', role: 'Jefe de Proyectos', phone: '917895500', email: 'dcruz@energy-soluciones.es', address: 'Madrid Capital', segment: 'Alianzas', stage: 'Propuesta Enviada', notes: 'Busca socio estable para acuerdos marco. Propuesta de alianza enviada el 01/10. Interesado en la exclusividad por zona. Necesita saber el margen de reventa y condiciones de crédito. Cierre inminente.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 500000, nextStep: 'Reunión de revisión de cláusulas de exclusividad y crédito.' },
+            { id: 'c7', name: 'Ana Ruiz', company: 'Distribuidor Local', role: 'Resp. Compras', phone: '947259330', email: 'aruiz@distribuidorcl.es', address: 'Burgos', segment: 'Alianzas', stage: 'Cerrado (Ganado)', notes: 'CERRADO (GANADO) el 20/09. Primer pedido de 3 camiones. Seguimiento de la satisfacción en la descarga y calidad. Próximo pedido en dos semanas. Preguntar por rotación en estantería.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 80000, nextStep: 'Llamada de post-venta y planificación de segundo pedido.' },
             // Prioridad 3 (5 más)
-            { id: 'c8', name: 'Laura Martín', company: 'Hotel Rural con SPA', role: 'Gerente', phone: '921170550', email: 'lmartin@hotelguadarrama.es', address: 'Villacastín, Segovia', segment: 'Alto Margen', stage: 'Prospección', notes: 'Alto margen. Confort del huésped y bajo mantenimiento.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 60000, nextStep: 'Citar caso de éxito de hotel balneario.' },
-            { id: 'c9', name: 'Fernando Díaz', company: 'Complejo Deportivo', role: 'Director de Instalaciones', phone: '979778300', email: 'fdiaz@complejosports.es', address: 'Palencia', segment: 'Alto Margen', stage: 'Prospección', notes: 'Gran consumo en piscina climatizada. Foco en ahorro ROI.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 75000, nextStep: 'Usar calculadora ROI en reunión.' },
-            { id: 'c10', name: 'Isabel Nieto', company: 'Balneario Histórico', role: 'Propietaria', phone: '983700850', email: 'inieto@balnearioviejo.es', address: 'Tierra de Pinares, Valladolid', segment: 'Alto Margen', stage: 'Prospección', notes: 'Necesita transición de combustible vieja. Vender limpieza.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 55000, nextStep: 'Ofrecer visita técnica gratuita.' },
-            { id: 'c11', name: 'Carlos Ruiz', company: 'Residencia de Mayores', role: 'Director Financiero', phone: '916809010', email: 'cruiz@residenciamadrid.es', address: 'Leganés, Madrid', segment: 'Alto Margen', stage: 'Prospección', notes: 'Consumo constante 24/7. Argumento de estabilidad de precio.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 85000, nextStep: 'Solicitar datos de consumo de Gas Natural.' },
-            { id: 'c12', name: 'Patricia Gómez', company: 'Restaurante de Bodas', role: 'Jefa de Climatización', phone: '947516440', email: 'pgomez@fincavinedos.es', address: 'Aranda de Duero, Burgos', segment: 'Alto Margen', stage: 'Prospección', notes: 'Vender imagen limpia y confort para clientes de eventos.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 45000, nextStep: 'Enviar panfleto con foco en caso Balneario.' },
-            { id: 'c13', name: 'Pablo Jiménez', company: 'Instaladora de Calderas', role: 'Director Comercial', phone: '921411910', email: 'pjimenez@termosistem.es', address: 'Segovia', segment: 'Alianzas', stage: 'Prospección', notes: 'Interesado en evitar postventa por mala calidad de pellets.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 200000, nextStep: 'Reunión para definir condiciones de distribuidor.' },
-            { id: 'c14', name: 'Sofía Vidal', company: 'Gran Almacén', role: 'Compradora', phone: '925500750', email: 'svidal@megaferreteria.es', address: 'Toledo', segment: 'Alianzas', stage: 'Prospección', notes: 'Busca marca premium para estantería B2C.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 150000, nextStep: 'Enviar lista de precios al por mayor.' },
-            { id: 'c15', name: 'Ramón García', company: 'Operador Logístico', role: 'Director de Operaciones', phone: '918091000', email: 'rgarcia@granel-express.es', address: 'Getafe, Madrid', segment: 'Alianzas', stage: 'Prospección', notes: 'Vender la capacidad de producción para acopio.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 300000, nextStep: 'Visita a la planta de Sanchonuño.' },
+            { id: 'c8', name: 'Laura Martín', company: 'Hotel Rural con SPA', role: 'Gerente', phone: '921170550', email: 'lmartin@hotelguadarrama.es', address: 'Villacastín, Segovia', segment: 'Alto Margen', stage: 'Prospección', notes: 'Alto margen. Confort del huésped y bajo mantenimiento es clave. Preguntó por certificación RSE. Enfatizar el origen local y la contribución al medio ambiente.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 60000, nextStep: 'Citar caso de éxito de hotel balneario.' },
+            { id: 'c9', name: 'Fernando Díaz', company: 'Complejo Deportivo', role: 'Director de Instalaciones', phone: '979778300', email: 'fdiaz@complejosports.es', address: 'Palencia', segment: 'Alto Margen', stage: 'Cerrado (Perdido)', notes: 'CERRADO (PERDIDO) el 05/09. Optaron por gas natural por inversión previa en caldera compatible. Dejar en seguimiento para re-evaluar en 12 meses cuando el precio del gas suba.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 75000, nextStep: 'Revisión en 12 meses (Septiembre 2026).' },
+            { id: 'c10', name: 'Isabel Nieto', company: 'Balneario Histórico', role: 'Propietaria', phone: '983700850', email: 'inieto@balnearioviejo.es', address: 'Tierra de Pinares, Valladolid', segment: 'Alto Margen', stage: 'Estudio de Viabilidad', notes: 'Necesita transición de combustible vieja. Vender limpieza y calidad constante. La caldera actual es muy antigua y el coste de la inversión la retiene. Enfocarse en el ahorro operativo.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 55000, nextStep: 'Ofrecer visita técnica gratuita y contacto con instalador financiado.' },
+            { id: 'c11', name: 'Carlos Ruiz', company: 'Residencia de Mayores', role: 'Director Financiero', phone: '916809010', email: 'cruiz@residenciamadrid.es', address: 'Leganés, Madrid', segment: 'Alto Margen', stage: 'Propuesta Enviada', notes: 'Propuesta enviada el 25/09. Consumo constante 24/7. Argumento de estabilidad de precio fue muy bien. La competencia ofreció un precio ligeramente inferior (0.5 €/tonelada). Necesitamos defender el valor de la certificación ENplus A1. Muy cerca del cierre.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 85000, nextStep: 'Llamada de defensa de la calidad ENplus A1 vs. el precio de la competencia.' },
+            { id: 'c12', name: 'Patricia Gómez', company: 'Restaurante de Bodas', role: 'Jefa de Climatización', phone: '947516440', email: 'pgomez@fincavinedos.es', address: 'Aranda de Duero, Burgos', segment: 'Alto Margen', stage: 'Prospección', notes: 'Vender imagen limpia y confort para clientes de eventos. Necesita un proveedor discreto y con horarios flexibles de entrega. Clave: la reputación de la finca.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 45000, nextStep: 'Enviar panfleto con foco en caso Balneario.' },
+            { id: 'c13', name: 'Pablo Jiménez', company: 'Instaladora de Calderas', role: 'Director Comercial', phone: '921411910', email: 'pjimenez@termosistem.es', address: 'Segovia', segment: 'Alianzas', stage: 'Cerrado (Ganado)', notes: 'CERRADO (GANADO) el 01/10. Acuerdo de distribución exclusiva para Segovia. Enviar bienvenida y primer catálogo de precios de distribuidor. Necesita material de marketing co-branded.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 200000, nextStep: 'Enviar acuerdo de colaboración y material de marketing.' },
+            { id: 'c14', name: 'Sofía Vidal', company: 'Gran Almacén', role: 'Compradora', phone: '925500750', email: 'svidal@megaferreteria.es', address: 'Toledo', segment: 'Alianzas', stage: 'Prospección', notes: 'Busca marca premium para estantería B2C. La logística en palet es clave. Le preocupa el espacio de almacenamiento.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 150000, nextStep: 'Enviar lista de precios al por mayor.' },
+            { id: 'c15', name: 'Ramón García', company: 'Operador Logístico', role: 'Director de Operaciones', phone: '918091000', email: 'rgarcia@granel-express.es', address: 'Getafe, Madrid', segment: 'Alianzas', stage: 'Prospección', notes: 'Vender la capacidad de producción para acopio. Necesita saber capacidad de carga semanal desde Sanchonuño. Cita de visita a planta pendiente.', lastContact: new Date().toISOString().substring(0, 10), nextFollowUp: '', value: 300000, nextStep: 'Confirmar visita a la planta de Sanchonuño.' },
         ];
         
-        // --- Funciones de Firebase ---
+        // --- Utilidades de la API de Gemini ---
+
+        // Función auxiliar para manejar el fetch con reintentos
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    }
+                    if (response.status === 429) { // Too Many Requests
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    throw new Error(`API returned status ${response.status}`);
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        async function callGemini(systemPrompt, userQuery) {
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetchWithRetry(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                    return text.trim();
+                }
+                return "Error: No se pudo generar la respuesta de la IA. Intente de nuevo.";
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                return "Error del sistema al comunicarse con la IA.";
+            }
+        }
+
+        window.summarizeNotes = async (clientId) => {
+            const client = clientsData.find(c => c.id === clientId);
+            const notesTextarea = document.getElementById('edit-notes');
+            const summaryOutput = document.getElementById('summary-output');
+            
+            if (!client || !client.notes || client.notes.trim() === "") {
+                summaryOutput.innerHTML = `<p class="text-sm text-yellow-600">No hay notas suficientes para resumir.</p>`;
+                return;
+            }
+
+            // Mostrar estado de carga
+            summaryOutput.innerHTML = `<p class="text-sm text-blue-500 animate-pulse">✨ Analizando notas con Gemini...</p>`;
+
+            const systemPrompt = `Eres un asistente de ejecutivo de cuentas. Tu trabajo es tomar las notas de seguimiento de un cliente B2B y generar un resumen ejecutivo conciso en un párrafo que capture el estado actual, el punto de dolor clave y el siguiente paso necesario. Responde solo con el resumen.`;
+            const userQuery = `Resume las siguientes notas para el cliente ${client.company}: "${client.notes}"`;
+
+            const summary = await callGemini(systemPrompt, userQuery);
+
+            summaryOutput.innerHTML = `
+                <div class="bg-indigo-100 p-3 rounded-lg border border-indigo-300">
+                    <p class="font-bold text-indigo-800 text-sm">Resumen Ejecutivo:</p>
+                    <p class="text-sm text-gray-700 mt-1">${summary}</p>
+                </div>
+            `;
+        };
+
+        window.generateAdvancedFollowUp = async (clientId) => {
+            const client = clientsData.find(c => c.id === clientId);
+            const reminderOutput = document.getElementById('reminder-output');
+            
+            if (!client || !['Estudio de Viabilidad', 'Propuesta Enviada'].includes(client.stage)) {
+                 reminderOutput.innerHTML = `<p class="bg-red-100 p-3 rounded-lg text-red-700 text-sm">Esta función avanzada solo aplica para las etapas de Estudio de Viabilidad o Propuesta Enviada.</p>`;
+                 APP.generateSimpleReminder(client); // Volver al recordatorio simple
+                 return;
+            }
+
+            // Mostrar estado de carga
+            reminderOutput.innerHTML = `<p class="text-sm text-green-600 animate-pulse p-4 text-center">✨ Generando correo de valor con Gemini...</p>`;
+            
+            const systemPrompt = `Eres un experto comercial de Naturpellet. Tu tarea es redactar un correo electrónico formal y profesional de seguimiento B2B. El tono debe ser consultivo, enfocándose en el valor, la credibilidad de Naturpellet (capacidad de producción, certificación ENplus A1) y buscando una acción clara. Siempre incluye una línea de asunto (Subject:). Usa el idioma español.`;
+            
+            const userQuery = `Redacta un correo de seguimiento para el contacto ${client.name}, de la empresa ${client.company}, con el rol de ${client.role}. El estado actual es '${client.stage}'. El segmento es '${client.segment}'. El próximo paso definido es: '${client.nextStep}'. Las notas de la cuenta son: '${client.notes}'.`;
+
+            const emailText = await callGemini(systemPrompt, userQuery);
+
+            reminderOutput.innerHTML = `
+                <div class="bg-green-50 p-4 rounded-lg border border-green-300">
+                    <h5 class="font-bold text-green-800 mb-2">Correo Generado por IA:</h5>
+                    <div class="whitespace-pre-wrap text-sm text-gray-700">${emailText}</div>
+                    <p class="mt-3 text-xs text-red-500 font-semibold">Revise y adapte el mensaje antes de enviar.</p>
+                </div>
+            `;
+        };
+        
+        // --- Funciones de Firebase (Mismas que el ejemplo anterior) ---
 
         const APP = {
             init: async () => {
@@ -49,9 +156,10 @@
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
+                document.getElementById('user-id-display').textContent = 'ID: ' + (typeof __initial_auth_token !== 'undefined' ? 'Auth User' : 'Anon User');
+
                 if (Object.keys(firebaseConfig).length === 0) {
                     console.error("Firebase config is missing. Data persistence will not work.");
-                    // Si no hay config, se usa un modo de solo lectura/demo.
                     APP.renderClientList(initialClients);
                     return; 
                 }
@@ -73,14 +181,13 @@
                             userId = user.uid;
                             APP.setupRealtimeListener(appId);
                         } else {
-                            // Esto podría ocurrir si el token expira
                             console.error("User not authenticated.");
                         }
                     });
 
                 } catch (e) {
                     console.error("Error initializing Firebase:", e);
-                    APP.renderClientList(initialClients); // Carga datos de demo si hay error
+                    APP.renderClientList(initialClients);
                 }
             },
 
@@ -88,7 +195,6 @@
                 const clientsRef = collection(db, `artifacts/${appId}/users/${userId}/crm_naturpellet`);
                 const q = query(clientsRef);
 
-                // Escuchar cambios en tiempo real
                 onSnapshot(q, (snapshot) => {
                     const loadedClients = [];
                     snapshot.forEach((doc) => {
@@ -96,7 +202,6 @@
                     });
                     
                     if (loadedClients.length === 0) {
-                        // Si no hay datos, cargar los iniciales y subirlos a Firestore
                         APP.seedInitialData(appId);
                     } else {
                         clientsData = loadedClients.sort((a, b) => {
@@ -108,7 +213,7 @@
                     }
                 }, (error) => {
                     console.error("Error al escuchar cambios en Firestore:", error);
-                    APP.renderClientList(initialClients); // Carga datos de demo si falla el listener
+                    APP.renderClientList(initialClients);
                 });
             },
 
@@ -117,7 +222,6 @@
                 console.log("Cargando datos iniciales en Firestore...");
                 for (const client of initialClients) {
                     const clientDocRef = doc(clientsRef, client.id);
-                    // Usar setDoc para evitar duplicados si se llama varias veces
                     await setDoc(clientDocRef, client); 
                 }
             },
@@ -141,25 +245,24 @@
 
         APP.renderClientList = (clients) => {
             const container = document.getElementById('client-list');
-            container.innerHTML = ''; // Limpiar lista
+            container.innerHTML = '';
             const segmentedClients = {};
 
-            // Agrupar por Etapa (Stage)
             STAGES.forEach(stage => segmentedClients[stage] = []);
             clients.forEach(client => {
                 if (segmentedClients[client.stage]) {
                     segmentedClients[client.stage].push(client);
                 } else {
-                    segmentedClients["Prospección"].push(client); // Fallback
+                    segmentedClients["Prospección"].push(client);
                 }
             });
 
             STAGES.forEach(stage => {
                 const stageContainer = document.createElement('div');
-                stageContainer.className = 'w-full md:w-1/4 lg:w-1/5 p-2 flex-shrink-0'; // Ajuste responsivo
+                stageContainer.className = 'w-full md:w-1/4 lg:w-1/5 p-2 flex-shrink-0';
                 stageContainer.innerHTML = `
-                    <div class="bg-gray-100 rounded-lg p-3 shadow-inner h-full flex flex-col">
-                        <h3 class="text-sm font-bold uppercase mb-3 text-gray-700 border-b pb-1">${stage} (${segmentedClients[stage].length})</h3>
+                    <div class="bg-gray-100 rounded-xl p-3 shadow-lg h-full flex flex-col">
+                        <h3 class="text-sm font-bold uppercase mb-3 text-gray-700 border-b pb-1 color-primary-text">${stage} (${segmentedClients[stage].length})</h3>
                         <div id="stage-${stage.replace(/\s/g, '-')}" class="space-y-3 flex-grow overflow-y-auto" style="min-height: 150px;">
                             ${APP.renderClientCards(segmentedClients[stage])}
                         </div>
@@ -188,8 +291,8 @@
                 case 'Prospección': return 'border-yellow-500';
                 case 'Estudio de Viabilidad': return 'border-blue-500';
                 case 'Propuesta Enviada': return 'border-purple-500';
-                case 'Cerrado (Ganado)': return 'border-green-500';
-                case 'Cerrado (Perdido)': return 'border-red-500';
+                case 'Cerrado (Ganado)': return 'border-green-600';
+                case 'Cerrado (Perdido)': return 'border-red-600';
                 default: return 'border-gray-300';
             }
         };
@@ -214,8 +317,10 @@
             document.getElementById('edit-role').value = client.role || '';
             document.getElementById('edit-phone').value = client.phone || '';
             document.getElementById('edit-email').value = client.email || '';
+            // FIX: Asegurar que los campos existen en el DOM antes de intentar asignarles un valor.
             document.getElementById('edit-address').value = client.address || '';
             document.getElementById('edit-segment').value = client.segment || '';
+            
             document.getElementById('edit-value').value = client.value || '';
             document.getElementById('edit-notes').value = client.notes || '';
             document.getElementById('edit-nextStep').value = client.nextStep || '';
@@ -230,8 +335,14 @@
             // Rellenar próxima fecha de seguimiento
             document.getElementById('edit-nextFollowUp').value = client.nextFollowUp || '';
 
-            // Generar sugerencias de recordatorio
-            document.getElementById('reminder-output').innerHTML = APP.generateReminder(client);
+            // Limpiar y generar sugerencias de recordatorio simple (inicial)
+            document.getElementById('summary-output').innerHTML = '';
+            document.getElementById('reminder-output').innerHTML = '';
+            APP.generateSimpleReminder(client);
+
+            // Actualizar botones de IA
+            document.getElementById('btn-summarize').onclick = () => summarizeNotes(clientId);
+            document.getElementById('btn-advanced-followup').onclick = () => generateAdvancedFollowUp(clientId);
             
             modal.classList.remove('hidden');
         };
@@ -264,42 +375,28 @@
             closeClientModal();
         };
 
-        // --- Funciones de Recordatorios Personalizados ---
-        APP.generateReminder = (client) => {
+        // --- Funciones de Recordatorios Personalizados (Versión Simple) ---
+        APP.generateSimpleReminder = (client) => {
             let message = '';
             let subject = '';
 
-            const today = new Date();
-            const followUpDate = client.nextFollowUp ? new Date(client.nextFollowUp) : null;
-            const daysUntilFollowUp = followUpDate ? Math.ceil((followUpDate - today) / (1000 * 60 * 60 * 24)) : null;
-
-            let tone = 'neutral';
-            if (daysUntilFollowUp !== null && daysUntilFollowUp <= 0) {
-                tone = 'urgente';
-            } else if (client.stage === 'Cerrado (Ganado)') {
-                tone = 'postventa';
-            }
-
-            // Mensajes base
-            if (tone === 'urgente') {
-                subject = `Seguimiento Urgente: Propuesta Naturpellet para ${client.company}`;
-                message = `Estimado/a ${client.name},\n\nLe escribo para retomar la conversación sobre el '${client.nextStep}'. Han pasado algunos días desde nuestra última interacción y queremos asegurarnos de que toda su información esté clara antes de proceder con el estudio. ¿Podríamos hablar 5 minutos hoy? Por favor y gracias.`;
-            } else if (tone === 'postventa') {
+            // Mensajes base simples (el avanzado se genera con IA)
+            if (client.stage === 'Cerrado (Ganado)') {
                 subject = `Post-Venta: Revisión de Suministro en ${client.company}`;
-                message = `Estimado/a ${client.name},\n\nEsperamos que el suministro de Naturpellet esté funcionando a plena satisfacción. Queríamos hacer un chequeo de cortesía para confirmar que la logística y la calidad del pellet cumplen sus expectativas, especialmente ahora que la demanda de ${client.segment} es alta. Si tiene algún comentario, estamos a su disposición. Por favor y gracias.`;
-            } else if (client.stage === 'Estudio de Viabilidad') {
-                subject = `Avance: Estudio de Viabilidad Energética para ${client.company}`;
-                message = `Estimado/a ${client.name},\n\nHemos avanzado en el análisis de ahorro. El potencial de ROI estimado con nuestro pellet certificado es muy prometedor. Me gustaría presentarle los datos clave en una breve videollamada mañana. ¿Le viene bien a las 10:00 o a las 16:00? Por favor y gracias.`;
-            } else { // Prospección o Propuesta Enviada
-                subject = `Propuesta Comercial Naturpellet - ${client.segment}`;
-                message = `Estimado/a ${client.name},\n\nComo parte de nuestro seguimiento, le recuerdo el valor de nuestra propuesta: '${client.nextStep}'. Naturpellet garantiza un suministro local y estable. Quedo atento a sus comentarios o preguntas sobre la viabilidad económica. Por favor y gracias.`;
+                message = `Estimado/a ${client.name},\n\nEsperamos que el suministro de Naturpellet esté funcionando a plena satisfacción. Queríamos hacer un chequeo de cortesía para confirmar que la logística y la calidad del pellet cumplen sus expectativas. Por favor, avísenos si tiene algún comentario. Gracias.`;
+            } else if (client.stage === 'Cerrado (Perdido)') {
+                subject = `Contacto de Cortesía: ${client.company} / Naturpellet`;
+                message = `Estimado/a ${client.name},\n\nEntendemos su decisión actual. Solo le escribo para desearle éxito con su proyecto. Naturpellet sigue a su disposición para cualquier re-evaluación futura, especialmente si las condiciones de mercado cambian. Por favor, ténganos en cuenta. Gracias.`;
+            } else {
+                subject = `Seguimiento: ${client.stage} para ${client.company}`;
+                message = `Estimado/a ${client.name},\n\nLe escribo para retomar el punto de nuestro último contacto sobre '${client.nextStep}'. Quedo atento a cualquier duda o si prefiere coordinar una breve llamada. Por favor, confírmeme su disponibilidad. Gracias.`;
             }
 
-            return `
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h5 class="font-bold text-blue-800 mb-2">Asunto: ${subject}</h5>
+            document.getElementById('reminder-output').innerHTML = `
+                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                    <h5 class="font-bold text-yellow-800 mb-2">Asunto (Simple): ${subject}</h5>
                     <div class="whitespace-pre-wrap text-sm text-gray-700">${message}</div>
-                    <p class="mt-3 text-xs text-red-500 font-semibold">Mensaje incluye cortesía: "Por favor y gracias".</p>
+                    <p class="mt-2 text-xs text-gray-500 font-semibold">Este es el recordatorio simple. Use el botón 'Avanzado' para generar un correo de cierre con IA.</p>
                 </div>
             `;
         };
@@ -323,16 +420,22 @@
         }
         .stage-container {
             height: calc(100vh - 120px); /* Altura ajustable para el scroll */
+            overflow-y: hidden; /* El scroll debe ir en cada columna */
+        }
+        .stage-container > div {
+            min-width: 250px;
         }
     </style>
 </head>
 <body class="p-4">
 
-    <header class="mb-6 pb-4 border-b border-gray-300 flex justify-between items-center">
-        <h1 class="text-3xl font-extrabold color-primary-text flex items-center">
+    <header class="mb-6 pb-4 border-b border-gray-300 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <h1 class="text-3xl font-extrabold color-primary-text flex items-center mb-2 sm:mb-0">
              <span class="color-accent-text mr-2 text-4xl font-black">Naturpellet</span> CRM B2B 
         </h1>
-        <p class="text-sm text-gray-500">Ejecutor: <span id="user-id-display">Cargando...</span> | Total de Clientes: ${initialClients.length}</p>
+        <p class="text-sm text-gray-500">
+            Ejecutor: <span id="user-id-display" class="font-semibold">Cargando...</span>
+        </p>
     </header>
 
     <!-- Kanban Board para el Seguimiento -->
@@ -344,49 +447,65 @@
     <!-- Modal de Edición del Cliente -->
     <div id="client-modal" class="modal fixed inset-0 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-screen overflow-y-auto">
-            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
                 <h2 class="text-2xl font-bold color-primary-text">Ficha de Seguimiento y Edición</h2>
-                <button onclick="closeClientModal()" class="text-gray-400 hover:text-gray-600">&times;</button>
+                <button onclick="closeClientModal()" class="text-gray-400 text-3xl hover:text-gray-600 leading-none">&times;</button>
             </div>
             
             <form id="client-form" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Columna 1: Datos de Contacto y Etapa -->
                 <div class="space-y-4 border-r md:pr-4">
-                    <h3 class="text-lg font-bold color-primary-text mb-2">1. Datos del Cliente</h3>
+                    <h3 class="text-lg font-bold color-primary-text mb-2">1. Datos y Etapa</h3>
                     <div><label class="block text-sm font-medium">Empresa</label><input type="text" id="edit-company" class="mt-1 w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm font-medium">Contacto</label><input type="text" id="edit-name" class="mt-1 w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm font-medium">Cargo</label><input type="text" id="edit-role" class="mt-1 w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm font-medium">Teléfono</label><input type="text" id="edit-phone" class="mt-1 w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm font-medium">Email</label><input type="email" id="edit-email" class="mt-1 w-full p-2 border rounded-lg"></div>
-                    <div><label class="block text-sm font-medium">Dirección/Ubicación</label><input type="text" id="edit-address" class="mt-1 w-full p-2 border rounded-lg"></div>
                     
-                    <h3 class="text-lg font-bold color-primary-text mt-6 mb-2">2. Etapa de Venta</h3>
+                    <!-- FIX: Se añade el campo de Dirección y Segmento que faltaban en el HTML del modal -->
+                    <div><label class="block text-sm font-medium">Dirección</label><input type="text" id="edit-address" class="mt-1 w-full p-2 border rounded-lg"></div>
+                    <div><label class="block text-sm font-medium">Segmento</label><input type="text" id="edit-segment" class="mt-1 w-full p-2 border rounded-lg" readonly></div>
+                    <!-- FIN FIX -->
+
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-sm font-medium">Segmento</label><input type="text" id="edit-segment" class="mt-1 w-full p-2 border rounded-lg" readonly></div>
                         <div><label class="block text-sm font-medium">Valor Estimado (€)</label><input type="number" id="edit-value" class="mt-1 w-full p-2 border rounded-lg"></div>
+                        <div><label class="block text-sm font-medium">Etapa Actual</label>
+                            <select id="edit-stage" class="mt-1 w-full p-2 border rounded-lg"></select>
+                        </div>
                     </div>
-                    <div><label class="block text-sm font-medium">Etapa Actual</label>
-                        <select id="edit-stage" class="mt-1 w-full p-2 border rounded-lg"></select>
+
+                    <h3 class="text-lg font-bold color-primary-text mt-6 mb-2">2. Notas y Resumen ✨</h3>
+                    <div>
+                        <label class="block text-sm font-medium">Notas de Seguimiento (Log)</label>
+                        <textarea id="edit-notes" rows="6" class="mt-1 w-full p-2 border rounded-lg"></textarea>
+                    </div>
+                    <button type="button" id="btn-summarize" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg transition duration-200 text-sm">
+                        ✨ Resumir Notas con IA
+                    </button>
+                    <div id="summary-output" class="mt-3">
+                        <!-- Output del resumen de IA -->
                     </div>
                 </div>
 
-                <!-- Columna 2: Seguimiento y Recordatorios -->
+                <!-- Columna 2: Seguimiento, Recordatorios y Guardar -->
                 <div class="space-y-4">
-                    <h3 class="text-lg font-bold color-primary-text mb-2">3. Historial y Planificación</h3>
+                    <h3 class="text-lg font-bold color-primary-text mb-2">3. Planificación de Contacto</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="block text-sm font-medium">Último Contacto</label><input type="date" id="edit-lastContact" class="mt-1 w-full p-2 border rounded-lg"></div>
                         <div><label class="block text-sm font-medium font-bold text-blue-600">Próximo Seguimiento</label><input type="date" id="edit-nextFollowUp" class="mt-1 w-full p-2 border rounded-lg border-blue-500"></div>
                     </div>
                     <div><label class="block text-sm font-medium">Próximo Paso</label><input type="text" id="edit-nextStep" class="mt-1 w-full p-2 border rounded-lg"></div>
-                    <div><label class="block text-sm font-medium">Notas de Seguimiento (Log)</label><textarea id="edit-notes" rows="4" class="mt-1 w-full p-2 border rounded-lg"></textarea></div>
 
-                    <h3 class="text-lg font-bold color-primary-text mt-6 mb-2">4. Recordatorio Personalizado</h3>
+                    <h3 class="text-lg font-bold color-primary-text mt-6 mb-2">4. Mensaje de Seguimiento</h3>
+                    <button type="button" id="btn-advanced-followup" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg transition duration-200 text-sm">
+                        ✨ Generar Seguimiento Avanzado (Correo de Valor)
+                    </button>
                     <div id="reminder-output" class="mb-4">
-                        <!-- Aquí se genera el mensaje de recordatorio -->
+                        <!-- Aquí se genera el mensaje de recordatorio (simple o IA) -->
                     </div>
 
                     <div class="pt-4 border-t">
-                        <button type="button" onclick="saveClientChanges()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition duration-200">
+                        <button type="button" onclick="saveClientChanges()" class="w-full color-primary-bg hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition duration-200">
                             GUARDAR CAMBIOS
                         </button>
                     </div>
